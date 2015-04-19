@@ -1,0 +1,94 @@
+---
+title: "Peer assessment 1"
+author: "Jeremy"
+date: "Sunday, April 19, 2015"
+output: html_document
+---
+Load data and Remove NA
+```{r} 
+data<-read.csv("./data/activity.csv", colClasses= c("numeric", "character", "numeric"))
+data1<- na.omit(data)
+data$date <- as.Date(data$date, "%Y-%m-%d")
+library(lattice)
+```
+Calculate the number of steps take each day,as well as  mean and median.
+Also plots the data onto a histogram
+```{r}
+steps.date <- aggregate(steps ~ date, data = data, FUN = sum)
+hist(steps.date$steps, xlab = "Day", main= "Histogram of Steps", col = "blue")
+```
+Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean(data1$steps)
+median(data1$steps)
+```
+
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+time_series <- tapply(data$steps, data$interval, mean, na.rm = TRUE)
+plot(row.names(time_series), time_series, type = "l", xlab = "5-min interval", 
+    ylab = "Average across all Days", main = "Average number of steps taken", 
+    col = "blue")
+max_interval <- which.max(time_series)
+names(max_interval)
+```
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+data_NA <- sum(is.na(data))
+data_NA
+```
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+##I used median as my strategy
+
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r}
+Stepsmedian <- aggregate(steps ~ interval, data = data, FUN = median)
+fillNA <- numeric()
+for (i in 1:nrow(data)) {
+    obs <- data[i, ]
+    if (is.na(obs$steps)) {
+        steps <- subset(Stepsmedian, interval == obs$interval)$steps
+    } else {
+        steps <- obs$steps
+    }
+    fillNA <- c(fillNA, steps)
+}
+
+new_data <- data
+new_data$steps <- fillNA
+
+StepsTotal2 <- aggregate(steps ~ date, data = new_data, sum, na.rm = TRUE)
+hist(StepsTotal2$steps, main = "Total steps by day", xlab = "day", col = "blue")
+mean(StepsTotal2$steps)
+median(StepsTotal2$steps)
+```
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r}
+day <- weekdays(data$date)
+daylevel <- vector()
+for (i in 1:nrow(data)) {
+    if (day[i] == "Saturday") {
+        daylevel[i] <- "Weekend"
+    } else if (day[i] == "Sunday") {
+        daylevel[i] <- "Weekend"
+    } else {
+        daylevel[i] <- "Weekday"
+    }
+}
+data$daylevel <- daylevel
+data$daylevel <- factor(data$daylevel)
+
+stepsByDay <- aggregate(steps ~ interval + daylevel, data = data, mean)
+names(stepsByDay) <- c("interval", "daylevel", "steps")
+
+```
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+```{r}
+xyplot(steps ~ interval | daylevel, stepsByDay, type = "l", layout = c(1, 2), 
+    xlab = "Interval", ylab = "Number of steps")
+```
